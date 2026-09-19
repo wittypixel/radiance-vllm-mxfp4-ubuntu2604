@@ -12,8 +12,8 @@
 ARG ROCM_BASE=docker.io/rocm/dev-ubuntu-26.04:7.14.0-full@sha256:56ccd1c24e4ff24d708250632b663b353a6e1d4ebc4eef9752d0c18514bf4303
 ARG GFX_ARCH=gfx1201
 # The release stage starts from a clean distro image rather than the ROCm base, and COPYs in only
-# the pruned ROCm tree plus the venv. Same Ubuntu release as the ROCm base (26.04), so the venv's
-# interpreter (python 3.13.x) matches.
+# the pruned ROCm tree plus the venv. Same Ubuntu release as the ROCm base (24.04), so the venv's
+# interpreter (python 3.12.3) matches.
 ARG RELEASE_BASE=docker.io/library/ubuntu:26.04@sha256:6c6ab8897d8794fccccc1d50e97489098a0a64ba54de133c1e4c2b20fb2c8bdd
 
 # Component pins, in one place. Each is both the git tag that gets compiled and the version the
@@ -85,9 +85,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Build tooling the base dev image lacks (git/venv/pkg-config + the -dev packages torch's cmake
 # probes: libdrm for rocm_smi, libnuma, libelf).
 RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt-get install -y --no-install-recommends \
-
       git python3.12-venv build-essential ccache pkg-config \
       libdrm-dev libnuma-dev libelf-dev \
+    && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/py
 ENV PATH=/opt/py/bin:$PATH
 # setuptools-scm is a build requirement of aiter and vLLM (both take their version from the git
@@ -191,8 +191,8 @@ ARG VLLM_VERSION
 ARG TRANSFORMERS_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt-get install -y --no-install-recommends \
-
       python3.12-venv git \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV VIRTUAL_ENV=/opt/vllm
 RUN python3 -m venv /opt/vllm
@@ -337,7 +337,7 @@ ARG TRANSFORMERS_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 # ROCm 7.14 vendors its own libdrm / numa / elf / sqlite / zlib / zstd (the librocm_sysdeps_* set),
 # so the release image needs very little from the distro:
-#   python3.12     the interpreter the /opt/vllm venv was built against (Ubuntu 26.04 ships 3.13.x)
+#   python3.12     the interpreter the /opt/vllm venv was built against (Ubuntu 24.04 ships 3.12.3)
 #   libnuma-dev    rocSHMEM dlopen()s the UNVERSIONED libnuma.so, which only the -dev package ships
 #   numactl        optional --numa-bind;  curl  the compose healthcheck runs it inside the container
 #   g++            NOT optional: AITER JIT-compiles its kernels on FIRST USE, inside this image, and
@@ -347,9 +347,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 #                  crashes. The build-time probe below is what keeps this honest.
 #   python3.12-dev Python.h, for the pybind11 modules aiter JIT-builds
 RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository -y ppa:deadsnakes/ppa && apt-get install -y --no-install-recommends \
-
       python3 python3.12 python3.12-dev g++ libnuma-dev numactl curl ca-certificates libgomp1 \
     && rm -rf /var/lib/apt/lists/*
+
 # /opt/rocm is a symlink farm pointing through /etc/alternatives into core-<ver>, so both have to
 # come across or nothing resolves. The pruned tree is stable across radiance releases, which keeps
 # it a cached layer users do not re-download for every version bump.
