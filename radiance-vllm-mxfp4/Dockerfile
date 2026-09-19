@@ -85,7 +85,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Build tooling the base dev image lacks (git/venv/pkg-config + the -dev packages torch's cmake
 # probes: libdrm for rocm_smi, libnuma, libelf).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      git python3.13-venv build-essential ccache pkg-config \
+    add-apt-repository -y ppa:deadsnakes/ppa &&
+      git python3.12-venv build-essential ccache pkg-config \
       libdrm-dev libnuma-dev libelf-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/py
@@ -191,13 +192,14 @@ ARG VLLM_VERSION
 ARG TRANSFORMERS_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3.13-venv git \
+    add-apt-repository -y ppa:deadsnakes/ppa &&
+      python3.12-venv git \
     && rm -rf /var/lib/apt/lists/*
 
 ENV VIRTUAL_ENV=/opt/vllm
 RUN python3 -m venv /opt/vllm
 ENV PATH=/opt/vllm/bin:$PATH
-ENV SP=/opt/vllm/lib/python3.13/site-packages
+ENV SP=/opt/vllm/lib/python3.12/site-packages
 
 # --- install the wheels ---
 # torch/triton/vision/aiter with --no-deps so pip does not replace them; vLLM with its pure-python
@@ -337,7 +339,7 @@ ARG TRANSFORMERS_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 # ROCm 7.14 vendors its own libdrm / numa / elf / sqlite / zlib / zstd (the librocm_sysdeps_* set),
 # so the release image needs very little from the distro:
-#   python3.13     the interpreter the /opt/vllm venv was built against (Ubuntu 26.04 ships 3.13.x)
+#   python3.12     the interpreter the /opt/vllm venv was built against (Ubuntu 26.04 ships 3.13.x)
 #   libnuma-dev    rocSHMEM dlopen()s the UNVERSIONED libnuma.so, which only the -dev package ships
 #   numactl        optional --numa-bind;  curl  the compose healthcheck runs it inside the container
 #   g++            NOT optional: AITER JIT-compiles its kernels on FIRST USE, inside this image, and
@@ -345,9 +347,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 #                  with). Without it every JIT build dies with "Could not find standard C++ header
 #                  'cmath'", aiter's flag probes all fail (including --offload-arch), and the engine
 #                  crashes. The build-time probe below is what keeps this honest.
-#   python3.13-dev Python.h, for the pybind11 modules aiter JIT-builds
+#   python3.12-dev Python.h, for the pybind11 modules aiter JIT-builds
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3 python3.13 python3.13-dev g++ libnuma-dev numactl curl ca-certificates libgomp1 \
+    add-apt-repository -y ppa:deadsnakes/ppa &&
+      python3 python3.12 python3.12-dev g++ libnuma-dev numactl curl ca-certificates libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # /opt/rocm is a symlink farm pointing through /etc/alternatives into core-<ver>, so both have to
